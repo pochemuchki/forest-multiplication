@@ -30,7 +30,7 @@ header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .pic{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--line);overflow:hidden;flex:none}
 .pic img{width:100%;height:100%;object-fit:cover}
 nav{display:flex;gap:6px;margin-bottom:14px}
-nav button{flex:1;padding:10px 2px;border:2px solid var(--line);background:var(--card);border-radius:14px;font-weight:800;font-size:15px}
+nav button{flex:1;padding:10px 2px;border:2px solid var(--line);background:var(--card);border-radius:14px;font-weight:800;font-size:13px}
 nav button[aria-selected="true"]{background:var(--pri);border-color:var(--pri);color:var(--pri-ink)}
 .card,.lvb,.tile{background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(20,60,35,.12);border:2px solid var(--line);border-radius:20px}
 .card{padding:14px;margin-bottom:12px}
@@ -172,6 +172,14 @@ body.r1 .trees,body.r2 .trees,body.r3 .trees,body.r4 .trees{display:none}
 .pd i.f2{font-size:4.4cqw}.pd i.f3{font-size:3.4cqw}.pd i.f4{font-size:2.8cqw}.pd i.f5{font-size:2.4cqw}.pd i.f6{font-size:2cqw}
 .pd.ok i{box-shadow:0 0 0 3px var(--sun),0 2px 5px rgba(0,0,0,.3);animation:pop .5s}
 textarea{width:100%;min-height:70px;border:2px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;padding:10px;margin-top:8px;word-break:break-all;resize:vertical}
+.trick{background:var(--sun);color:#1B2A4A;border-radius:16px;padding:12px 14px;font-weight:800;margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.chip{min-width:50px;padding:10px 0;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;font-weight:900;font-size:20px}
+.chip[aria-pressed="true"]{background:var(--sun);border-color:var(--sun);color:#1B2A4A}
+.lrow{display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:2px dashed var(--line);font-size:22px;font-weight:800}
+.lrow:last-child{border:0}
+.lrow button{min-width:84px;padding:8px 10px;border-radius:10px;border:2px solid var(--pri);background:transparent;color:var(--pri);font-weight:900;font-size:20px}
+.lrow button.open{background:var(--pri);color:var(--pri-ink)}
 #mute{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:5;width:50px;height:50px;border-radius:50%;border:3px solid var(--line);background:var(--card);font-size:24px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 </style>
 </head>
@@ -200,9 +208,10 @@ textarea{width:100%;min-height:70px;border:2px solid var(--line);border-radius:1
 <div id="home" class="hide">
 <header><span id="hPic"></span><div><h1 id="hello"></h1><div class="sub" id="rank"></div></div><div class="tot" id="tot"></div></header>
 <nav role="tablist">
-<button role="tab" data-tab="map">🌲 Лес</button><button role="tab" data-tab="friends">👥 Друзья</button><button role="tab" data-tab="profile">🧒 Я</button><button role="tab" data-tab="stats">📊 Успехи</button>
+<button role="tab" data-tab="map">🌲 Лес</button><button role="tab" data-tab="learn">📖 Учим</button><button role="tab" data-tab="friends">👥 Друзья</button><button role="tab" data-tab="profile">🧒 Я</button><button role="tab" data-tab="stats">📊 Успехи</button>
 </nav>
 <section id="map"><div id="levels"></div></section>
+<section id="learn" class="hide"></section>
 <section id="friends" class="hide"></section>
 <section id="profile" class="hide"></section>
 <section id="stats" class="hide"></section>
@@ -434,9 +443,9 @@ function frontier(){for(var i=0;i<T.length;i++){if(unlocked(T[i])&&P(T[i])[2]===
 function render(){
   var s=total(),rk=RANKS[0][1];RANKS.forEach(function(r){if(s>=r[0])rk=r[1]});
   $("hPic").innerHTML=pic(D.av,56);$("hello").textContent="Привет, "+D.name+"!";$("rank").textContent=rk;$("tot").textContent="⭐ "+s;
-  ["map","friends","profile","stats"].forEach(function(id){$(id).classList.toggle("hide",id!==tab)});
+  ["map","learn","friends","profile","stats"].forEach(function(id){$(id).classList.toggle("hide",id!==tab)});
   document.querySelectorAll("[data-tab]").forEach(function(b){b.setAttribute("aria-selected",b.dataset.tab===tab)});
-  if(tab==="map")drawMap();if(tab==="friends")drawFriends();if(tab==="stats")drawStats();
+  if(tab==="map")drawMap();if(tab==="friends")drawFriends();if(tab==="stats")drawStats();if(tab==="learn")drawLearn();
 }
 document.querySelectorAll("[data-tab]").forEach(function(b){b.onclick=function(){
   tab=b.dataset.tab;render();
@@ -523,6 +532,33 @@ function drawFriends(){
   $("friends").innerHTML=h+'</div>';
   if(REMOTE)bindRemote();
 }
+/* ---- вкладка «Учим» ---- */
+var TRICKS={2:"Умножить на 2 — значит удвоить. 2 × 7 — это 7 + 7 = 14.",
+3:"Удвой число и прибавь ещё одно. 3 × 6 = 6 + 6 + 6 = 18.",
+4:"Удвой, а потом ещё раз удвой. 4 × 7: 7 → 14 → 28.",
+5:"Ответ всегда заканчивается на 0 или 5. Чётное число даёт 0, нечётное даёт 5.",
+6:"6 × n — это 5 × n и ещё один n. 6 × 7 = 35 + 7 = 42.",
+7:"Запомни самый хитрый пример: 5, 6, 7, 8 → 56 = 7 × 8. Остальные ты уже знаешь из других таблиц!",
+8:"Удвой три раза. 8 × 6: 6 → 12 → 24 → 48.",
+9:"Сумма цифр ответа всегда 9: 9 × 4 = 36 (3 + 6 = 9). Ещё способ: отними 1 от числа — это десятки, а вторую цифру допиши до 9.",
+10:"Просто допиши ноль справа. 10 × 7 = 70."};
+var lcur=2,lall=false,lopen={};
+function drawLearn(){
+  var h='<p class="sub" style="margin-top:0">Выбери число. Сначала попробуй вспомнить ответ сам, потом нажми на кнопку.</p><div class="chips">';
+  T.forEach(function(n){h+='<button class="chip" data-lc="'+n+'" aria-pressed="'+(n===lcur)+'" type="button">'+n+'</button>'});
+  h+='</div><div class="trick">💡 '+TRICKS[lcur]+'</div><div class="card">';
+  for(var m=1;m<=10;m++){var v=lall||lopen[m];h+='<div class="lrow"><span>'+lcur+' × '+m+' =</span><button data-lm="'+m+'" class="'+(v?'open':'')+'" type="button">'+(v?lcur*m:'?')+'</button></div>'}
+  h+='</div><div class="card"><b>А теперь наоборот</b><p style="margin:6px 0 0">Деление — это таблица в обратную сторону: если '+lcur+' × 6 = '+lcur*6+', то '+lcur*6+' ÷ '+lcur+' = 6.</p></div>';
+  h+='<button class="big alt" id="lall" type="button">'+(lall?'Спрятать ответы':'Показать все ответы')+'</button>';
+  $("learn").innerHTML=h;
+  $("lall").onclick=function(){lall=!lall;lopen={};drawLearn()};
+}
+$("learn").onclick=function(e){
+  var c=e.target.closest("[data-lc]"),m=e.target.closest("[data-lm]");
+  if(c){lcur=+c.dataset.lc;lall=false;lopen={};drawLearn()}
+  else if(m){var k=+m.dataset.lm;lopen[k]=!lopen[k];drawLearn()}
+};
+
 function drawStats(){
   var s=D.st,acc=s.tot?Math.round(100*s.ok/s.tot):0,h='<div class="tiles"><div class="tile"><b>'+s.tot+'</b>примеров решено</div><div class="tile"><b>'+acc+'%</b>верных ответов</div><div class="tile"><b>'+s.best+'</b>лучшая серия</div><div class="tile"><b>'+total()+' / 108</b>звёзд</div></div><div class="card"><b>Точность по таблицам</b>';
   T.forEach(function(t){var b=s.by[t]||[0,0],p=b[1]?Math.round(100*b[0]/b[1]):0;h+='<div class="bar"><span>×'+t+'</span><div><i style="width:'+p+'%"></i></div><span>'+(b[1]?p+'%':'—')+'</span></div>'});
