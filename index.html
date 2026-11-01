@@ -10,6 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script src="config.js"></script>
 <style>
 :root{--bg:#E3F4E1;--card:#fff;--ink:#1F3A2B;--soft:#5C7A67;--pri:#2E9E5B;--pri-ink:#fff;--sun:#FFB300;--good:#1E9E55;--bad:#E5484D;--line:#BFE0C4;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -170,6 +171,7 @@ body.r1 .trees,body.r2 .trees,body.r3 .trees,body.r4 .trees{display:none}
 .pd i{display:flex;align-items:center;justify-content:center;width:86%;height:86%;border-radius:50%;color:#fff;font-style:normal;font-weight:900;font-size:clamp(8px,2.8vw,15px);text-shadow:0 1px 2px rgba(0,0,0,.5);box-shadow:0 2px 5px rgba(0,0,0,.3)}
 .pd i.f2{font-size:4.4cqw}.pd i.f3{font-size:3.4cqw}.pd i.f4{font-size:2.8cqw}.pd i.f5{font-size:2.4cqw}.pd i.f6{font-size:2cqw}
 .pd.ok i{box-shadow:0 0 0 3px var(--sun),0 2px 5px rgba(0,0,0,.3);animation:pop .5s}
+textarea{width:100%;min-height:70px;border:2px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;padding:10px;margin-top:8px;word-break:break-all;resize:vertical}
 #mute{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:5;width:50px;height:50px;border-radius:50%;border:3px solid var(--line);background:var(--card);font-size:24px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 </style>
 </head>
@@ -239,12 +241,12 @@ body.r1 .trees,body.r2 .trees,body.r3 .trees,body.r4 .trees{display:none}
 <script>
 (function(){
 var T=[2,3,4,5,6,7,8,9,10],$=function(i){return document.getElementById(i)},KEY="forest-v3";
-var D=null,db=null,uid=null,meRef=null,PL=[],tab="map",open=0,syT;
+var D=null,db=null,uid=null,meRef=null,PL=[],tab="map",open=0,syT,REMOTE=null,ADM="";try{ADM=localStorage.getItem("forest-admin")||""}catch(e){}
 var EMO=["🦊","🐼","🐸","🦉","🐯","🐙","🦄","🐲"];
 var RN=["Тропинка","Быстрый ручей","Густые заросли","Лесная головоломка"],RD=["без времени","8 секунд на пример","10 секунд, ответ вводишь сам","10 головоломок: соедини пример с ответом"];
 var RANKS=[[0,"Новичок леса"],[10,"Лесной ученик"],[28,"Следопыт"],[55,"Хранитель леса"],[85,"Мастер умножения"]];
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
-function mk(o){o=o||{};o.name=o.name||"";o.av=o.av||"🦊";o.prog=o.prog||{};o.st=o.st||{};var s=o.st;s.tot=s.tot||0;s.ok=s.ok||0;s.best=s.best||0;s.by=s.by||{};o.mist=o.mist||{};return o}
+function mk(o){o=o||{};o.name=o.name||"";o.av=o.av||"🦊";o.prog=o.prog||{};o.st=o.st||{};var s=o.st;s.tot=s.tot||0;s.ok=s.ok||0;s.best=s.best||0;s.by=s.by||{};o.mist=o.mist||{};o.pid=o.pid||Math.random().toString(36).slice(2,10);o.friends=o.friends||{};return o}
 function P(t){var a=D.prog[t]||(D.prog[t]=[0,0,0,0]);while(a.length<4)a.push(0);return a}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),x=a[i];a[i]=a[j];a[j]=x}return a}
 function total(o){var s=0;T.forEach(function(t){((o||D).prog[t]||[0,0,0,0]).forEach(function(x){s+=x})});return s}
@@ -261,7 +263,7 @@ function save(){
   if(db){clearTimeout(syT);syT=setTimeout(push,1200)}
 }
 function mergeLocal(){
-  try{var lo=JSON.parse(localStorage.getItem(KEY+(uid||"")));if(!lo)return;
+  try{var lo=JSON.parse(localStorage.getItem(KEY+(uid||""))||localStorage.getItem(KEY));if(!lo)return;
     if(!D.name&&lo.name){D.name=lo.name;D.av=lo.av||D.av}
     T.forEach(function(t){var a=P(t),b=(lo.prog&&lo.prog[t])||[];for(var i=0;i<4;i++)a[i]=Math.max(a[i]||0,b[i]||0)});
     var ls=lo.st||{};D.st.tot=Math.max(D.st.tot,ls.tot||0);D.st.ok=Math.max(D.st.ok,ls.ok||0);D.st.best=Math.max(D.st.best,ls.best||0);
@@ -330,6 +332,47 @@ function showMeme(ok){
 }
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
 
+/* ---- свой сервер (Supabase): общая таблица друзей ---- */
+function cfgOk(){var c=window.FOREST_CFG;return !!(c&&c.url&&c.key)}
+function lsGet(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function getUid(){var u=lsGet("forest-uid");if(!/^[A-Za-z0-9_-]{4,40}$/.test(u)){u="u"+Math.random().toString(36).slice(2,12)+Date.now().toString(36);lsSet("forest-uid",u)}return u}
+function mkRemote(cfg,room){
+  var base=cfg.url.replace(/\/+$/,"")+"/rest/v1/rpc/",cbs=[];
+  function rpc(fn,body){
+    var hdr={"Content-Type":"application/json",apikey:cfg.key};if(/^eyJ/.test(cfg.key))hdr.Authorization="Bearer "+cfg.key;
+    var ctl=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort()},12000);
+    return fetch(base+fn,{method:"POST",headers:hdr,body:JSON.stringify(body),signal:ctl?ctl.signal:undefined})
+      .then(function(r){clearTimeout(tm);if(!r.ok)throw new Error("http "+r.status);return r.text()})
+      .then(function(t){return t?JSON.parse(t):null});
+  }
+  function tick(){return rpc("get_players",{p_room:room}).then(function(rows){
+    var sn={docs:(rows||[]).map(function(x){return{id:x.id,data:function(){return x.data}}})};cbs.forEach(function(cb){cb(sn)})}).catch(function(){})}
+  var d={collection:function(){return{
+    doc:function(id){return{
+      get:function(){return rpc("get_me",{p_room:room,p_id:id}).then(function(v){return{exists:!!v,data:function(){return v}}})},
+      set:function(o){return rpc("upsert_player",{p_room:room,p_id:id,p_data:o})}}},
+    onSnapshot:function(cb){cbs.push(cb);tick();setInterval(function(){if(!document.hidden)tick()},20000)}}}};
+  return{db:d,tick:tick,rpc:rpc,room:room};
+}
+function remoteBar(){
+  var h='<div class="card"><b>Код друзей: '+esc(REMOTE.room)+'</b> <button class="back" id="rref" type="button">🔄 Обновить</button> <button class="back" id="rchg" type="button">Сменить код</button><div class="sub" style="margin-top:6px">Таблица обновляется сама каждые 20 секунд.</div>';
+  h+=ADM?'<div style="margin-top:8px"><span class="sub">Режим администратора:</span> <button class="back" id="aclr" type="button">Очистить комнату</button> <button class="back" id="aout" type="button">Выйти</button></div>':'<div style="margin-top:8px"><button class="back" id="ain" type="button">Я администратор</button></div>';
+  return h+'</div>';
+}
+function bindRemote(){
+  var R=REMOTE,f=$("friends");
+  $("rref").onclick=function(){R.tick()};
+  $("rchg").onclick=function(){lsSet("forest-room","");location.reload()};
+  if($("ain"))$("ain").onclick=function(){
+    var k=window.prompt("Секретный код администратора:");if(!k)return;
+    R.rpc("admin_delete_player",{p_room:R.room,p_id:"noop-noop",p_key:k}).then(function(){ADM=k;lsSet("forest-admin",k);drawFriends()}).catch(function(){window.alert("Код не подошёл.")});
+  };
+  if($("aout"))$("aout").onclick=function(){ADM="";lsSet("forest-admin","");drawFriends()};
+  if($("aclr"))$("aclr").onclick=function(){if(window.confirm("Удалить из комнаты всех игроков?"))R.rpc("admin_clear_room",{p_room:R.room,p_key:ADM}).then(R.tick).catch(function(){window.alert("Не получилось. Проверь код администратора.")})};
+  f.onclick=function(e){var b=e.target.closest("[data-adel]");if(b&&window.confirm("Убрать этого игрока из таблицы?"))R.rpc("admin_delete_player",{p_room:R.room,p_id:b.dataset.adel,p_key:ADM}).then(R.tick).catch(function(){window.alert("Не получилось. Проверь код администратора.")})};
+}
+
 /* ---- старт ---- */
 (async function(){
   try{
@@ -339,10 +382,12 @@ function pick(a){return a[Math.floor(Math.random()*a.length)]}
       if(u&&d){uid=await u.id();if(uid){db=d;meRef=db.collection("players").doc(uid)}}
     }
   }catch(e){db=null}
+  var room=lsGet("forest-room");
+  if(!db&&cfgOk()&&/^[A-Za-z0-9_-]{3,24}$/.test(room)){try{uid=getUid();REMOTE=mkRemote(window.FOREST_CFG,room);db=REMOTE.db;meRef=db.collection("players").doc(uid)}catch(e){db=null;REMOTE=null}}
   if(db){
-    try{var s=await meRef.get();var ex=typeof s.exists==="function"?s.exists():s.exists;D=mk(ex?JSON.parse(JSON.stringify(s.data())):null)}catch(e){db=null;meRef=null}
+    try{var s=await meRef.get();var ex=typeof s.exists==="function"?s.exists():s.exists;D=mk(ex?JSON.parse(JSON.stringify(s.data())):null)}catch(e){db=null;meRef=null;REMOTE=null}
   }
-  if(!db){var o=null;try{o=JSON.parse(localStorage.getItem(KEY))}catch(e){}D=mk(o)}else mergeLocal();
+  if(!db){var o=null;try{o=JSON.parse(localStorage.getItem(KEY+(uid||""))||localStorage.getItem(KEY))}catch(e){}D=mk(o)}else mergeLocal();
   if(db){db.collection("players").onSnapshot(function(sn){
     PL=sn.docs.map(function(x){var v=JSON.parse(JSON.stringify(x.data()||{}));v.id=x.id;return v}).filter(function(v){return v.name});
     if(tab==="friends"&&!$("home").classList.contains("hide"))drawFriends();
@@ -410,18 +455,66 @@ $("levels").onclick=function(e){
   else if(o){var t=+o.dataset.open;open=open===t?0:t;drawMap()}
 };
 
+/* ---- друзья без сервера: обмен кодами героев ---- */
+function isEmo(a){return a&&a.indexOf("data:image/")!==0}
+function makeCode(){
+  var o={i:D.pid,n:D.name,a:isEmo(D.av)?D.av:"🙂",s:total(),t:D.st.tot,o:D.st.ok,b:D.st.best,u:Math.floor(Date.now()/1000)};
+  return "FH1."+btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+}
+function parseCode(str){
+  var m=/FH1\.[A-Za-z0-9+\/=]+/.exec(str||"");if(!m)return null;
+  try{var o=JSON.parse(decodeURIComponent(escape(atob(m[0].slice(4)))));
+    if(typeof o.i!=="string"||typeof o.n!=="string"||o.i.length>12||o.n.length>12)return null;
+    ["s","t","o","b","u"].forEach(function(k){o[k]=Math.max(0,Math.min(1e9,+o[k]||0))});
+    o.a=String(o.a||"🙂").slice(0,8);return o}catch(e){return null}
+}
+function drawLocalFriends(){
+  var me={i:D.pid,n:D.name,a:D.av,s:total(),t:D.st.tot,o:D.st.ok,b:D.st.best,me:1};
+  var L=[me].concat(Object.keys(D.friends).map(function(k){return D.friends[k]}));
+  L.sort(function(a,b){return b.s-a.s||b.o-a.o});
+  var tot=0;L.forEach(function(p){tot+=p.t});
+  var h='';
+  if(cfgOk()){
+    h+=lsGet("forest-room")?'<div class="card"><b>Нет связи с сервером.</b><p class="sub" style="margin:6px 0 0">Проверь интернет и открой игру заново. Пока работает таблица на кодах.</p><button class="back" id="rchg2" type="button">Сменить код друзей</button></div>':'<div class="card"><b>Общая таблица с друзьями</b><p class="sub" style="margin:6px 0 0">Введи код друзей. Его придумывает и сообщает тот, кто настраивал игру. Результаты друзей будут обновляться сами.</p><input type="text" id="roomin" maxlength="24" placeholder="Например: FOREST-7" autocomplete="off"><button class="big" id="roomgo" type="button">Подключиться</button><div class="msg" id="roomm" aria-live="polite"></div></div>';
+  }
+  h+='<div class="card"><b>Друзья без сервера</b><p class="sub" style="margin:6px 0 0">Покажи другу свой код или вставь его код сюда. Обновляй код, когда наберёшь новые звёзды.</p>'+
+   '<button class="big" id="fcode" type="button">Показать мой код</button><div class="hide" id="fmine"><textarea id="fmy" readonly></textarea><button class="big alt" id="fcopy" type="button">Скопировать код</button></div>'+
+   '<textarea id="fin" placeholder="Вставь сюда код друга"></textarea><button class="big alt" id="fadd" type="button">Добавить друга</button><div class="msg" id="fmsg" aria-live="polite"></div></div>'+
+   '<div class="tiles"><div class="tile"><b>'+L.length+'</b>героев в лесу</div><div class="tile"><b>'+tot+'</b>примеров вместе</div></div><div class="card"><b>Таблица героев</b>';
+  L.forEach(function(p,i){
+    var acc=p.t?Math.round(100*p.o/p.t):0;
+    h+='<div class="rowp'+(p.me?' me':'')+'"><span class="rk">'+(i<3?["🥇","🥈","🥉"][i]:i+1)+'</span>'+pic(p.a,44)+'<div><div class="nm">'+esc(p.n)+(p.me?' (ты)':'')+'</div><div class="sub">точность '+acc+'% · серия '+(p.b||0)+'</div></div><span class="st">⭐ '+p.s+'</span>'+(p.me?'':'<button class="back" data-del="'+esc(p.i)+'" type="button" aria-label="Убрать друга">✕</button>')+'</div>';
+  });
+  $("friends").innerHTML=h+'</div>';
+  if($("roomgo"))$("roomgo").onclick=function(){var v=$("roomin").value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"");if(v.length<3){$("roomm").textContent="Код должен быть не короче 3 букв или цифр.";return}lsSet("forest-room",v);location.reload()};
+  if($("rchg2"))$("rchg2").onclick=function(){lsSet("forest-room","");location.reload()};
+  $("fcode").onclick=function(){$("fmy").value=makeCode();$("fmine").classList.remove("hide");$("fmy").select()};
+  $("fcopy").onclick=function(){var t=$("fmy");t.select();var ok=false;
+    try{if(navigator.clipboard){navigator.clipboard.writeText(t.value);ok=true}}catch(e){}
+    if(!ok){try{ok=document.execCommand("copy")}catch(e){}}
+    $("fmsg").textContent=ok?"Код скопирован! Отправь его другу.":"Выдели код и скопируй его вручную."};
+  $("fadd").onclick=function(){
+    var o=parseCode($("fin").value);
+    if(!o){$("fmsg").textContent="Не получилось прочитать код. Скопируй его целиком.";return}
+    if(o.i===D.pid){$("fmsg").textContent="Это твой собственный код.";return}
+    var old=D.friends[o.i];if(old&&old.u>=o.u){$("fmsg").textContent="У тебя уже есть этот или более свежий код друга.";return}
+    D.friends[o.i]=o;save();drawLocalFriends();$("fmsg").textContent="Друг "+o.n+" добавлен!";
+  };
+  $("friends").onclick=function(e){var d=e.target.closest("[data-del]");if(d){delete D.friends[d.dataset.del];save();drawLocalFriends()}};
+}
 function drawFriends(){
   var h;
-  if(!db){$("friends").innerHTML='<div class="card"><b>Общая статистика пока выключена.</b><p style="margin:8px 0 0">Она включается, когда игру открывают по ссылке с общим доступом. Сейчас ты играешь один, и твой прогресс хранится на этом телефоне.</p></div>';return}
+  if(!db){drawLocalFriends();return}
   var L=PL.slice().sort(function(a,b){return(b.stars||0)-(a.stars||0)||((b.st&&b.st.ok)||0)-((a.st&&a.st.ok)||0)});
   var tot=0,stars=0;L.forEach(function(p){tot+=(p.st&&p.st.tot)||0;stars+=p.stars||0});
-  h='<div class="tiles"><div class="tile"><b>'+L.length+'</b>героев в лесу</div><div class="tile"><b>'+tot+'</b>примеров вместе</div></div><div class="card"><b>Таблица героев · ⭐ '+stars+' вместе</b>';
+  h=(REMOTE?remoteBar():'')+'<div class="tiles"><div class="tile"><b>'+L.length+'</b>героев в лесу</div><div class="tile"><b>'+tot+'</b>примеров вместе</div></div><div class="card"><b>Таблица героев · ⭐ '+stars+' вместе</b>';
   if(!L.length)h+='<p>Пока никого нет. Позови друзей!</p>';
   L.forEach(function(p,i){
     var s=p.st||{},acc=s.tot?Math.round(100*s.ok/s.tot):0,me=p.id===uid;
-    h+='<div class="rowp'+(me?' me':'')+'"><span class="rk">'+(i<3?["🥇","🥈","🥉"][i]:i+1)+'</span>'+pic(p.av,44)+'<div><div class="nm">'+esc(p.name)+(me?' (ты)':'')+'</div><div class="sub">точность '+acc+'% · серия '+(s.best||0)+'</div></div><span class="st">⭐ '+(p.stars||0)+'</span></div>';
+    h+='<div class="rowp'+(me?' me':'')+'"><span class="rk">'+(i<3?["🥇","🥈","🥉"][i]:i+1)+'</span>'+pic(p.av,44)+'<div><div class="nm">'+esc(p.name)+(me?' (ты)':'')+'</div><div class="sub">точность '+acc+'% · серия '+(s.best||0)+'</div></div><span class="st">⭐ '+(p.stars||0)+'</span>'+(ADM&&!me?'<button class="back" data-adel="'+esc(p.id)+'" type="button" aria-label="Убрать игрока">✕</button>':'')+'</div>';
   });
   $("friends").innerHTML=h+'</div>';
+  if(REMOTE)bindRemote();
 }
 function drawStats(){
   var s=D.st,acc=s.tot?Math.round(100*s.ok/s.tot):0,h='<div class="tiles"><div class="tile"><b>'+s.tot+'</b>примеров решено</div><div class="tile"><b>'+acc+'%</b>верных ответов</div><div class="tile"><b>'+s.best+'</b>лучшая серия</div><div class="tile"><b>'+total()+' / 108</b>звёзд</div></div><div class="card"><b>Точность по таблицам</b>';
