@@ -241,7 +241,7 @@ textarea{width:100%;min-height:70px;border:2px solid var(--line);border-radius:1
 <script>
 (function(){
 var T=[2,3,4,5,6,7,8,9,10],$=function(i){return document.getElementById(i)},KEY="forest-v3";
-var D=null,db=null,uid=null,meRef=null,PL=[],tab="map",open=0,syT,REMOTE=null,ADM="";try{ADM=localStorage.getItem("forest-admin")||""}catch(e){}
+var D=null,db=null,uid=null,meRef=null,PL=[],tab="map",open=0,syT,REMOTE=null,REMOTE_ERR="",ADM="";try{ADM=localStorage.getItem("forest-admin")||""}catch(e){}
 var EMO=["🦊","🐼","🐸","🦉","🐯","🐙","🦄","🐲"];
 var RN=["Тропинка","Быстрый ручей","Густые заросли","Лесная головоломка"],RD=["без времени","8 секунд на пример","10 секунд, ответ вводишь сам","10 головоломок: соедини пример с ответом"];
 var RANKS=[[0,"Новичок леса"],[10,"Лесной ученик"],[28,"Следопыт"],[55,"Хранитель леса"],[85,"Мастер умножения"]];
@@ -338,7 +338,7 @@ function lsGet(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function getUid(){var u=lsGet("forest-uid");if(!/^[A-Za-z0-9_-]{4,40}$/.test(u)){u="u"+Math.random().toString(36).slice(2,12)+Date.now().toString(36);lsSet("forest-uid",u)}return u}
 function mkRemote(cfg,room){
-  var base=cfg.url.replace(/\/+$/,"")+"/rest/v1/rpc/",cbs=[];
+  var base=cfg.url.trim().replace(/\/+$/,"").replace(/\/rest\/v1$/,"").replace(/\/+$/,"")+"/rest/v1/rpc/",cbs=[];
   function rpc(fn,body){
     var hdr={"Content-Type":"application/json",apikey:cfg.key};if(/^eyJ/.test(cfg.key))hdr.Authorization="Bearer "+cfg.key;
     var ctl=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort()},12000);
@@ -354,6 +354,12 @@ function mkRemote(cfg,room){
       set:function(o){return rpc("upsert_player",{p_room:room,p_id:id,p_data:o})}}},
     onSnapshot:function(cb){cbs.push(cb);tick();setInterval(function(){if(!document.hidden)tick()},20000)}}}};
   return{db:d,tick:tick,rpc:rpc,room:room};
+}
+function errHint(e){
+  if(/40[13]/.test(e))return "ключ в config.js не подошёл. Проверь, что скопирован целиком.";
+  if(/404/.test(e))return "в Supabase не выполнен SQL-скрипт (шаг 3 инструкции) или адрес в config.js неверный.";
+  if(/Failed|abort|Network|fetch/i.test(e))return "сервер не отвечает: адрес в config.js неверный, нет интернета или Supabase не открывается без VPN.";
+  return "ответ сервера: "+e;
 }
 function remoteBar(){
   var h='<div class="card"><b>Код друзей: '+esc(REMOTE.room)+'</b> <button class="back" id="rref" type="button">🔄 Обновить</button> <button class="back" id="rchg" type="button">Сменить код</button><div class="sub" style="margin-top:6px">Таблица обновляется сама каждые 20 секунд.</div>';
@@ -385,7 +391,7 @@ function bindRemote(){
   var room=lsGet("forest-room");
   if(!db&&cfgOk()&&/^[A-Za-z0-9_-]{3,24}$/.test(room)){try{uid=getUid();REMOTE=mkRemote(window.FOREST_CFG,room);db=REMOTE.db;meRef=db.collection("players").doc(uid)}catch(e){db=null;REMOTE=null}}
   if(db){
-    try{var s=await meRef.get();var ex=typeof s.exists==="function"?s.exists():s.exists;D=mk(ex?JSON.parse(JSON.stringify(s.data())):null)}catch(e){db=null;meRef=null;REMOTE=null}
+    try{var s=await meRef.get();var ex=typeof s.exists==="function"?s.exists():s.exists;D=mk(ex?JSON.parse(JSON.stringify(s.data())):null)}catch(e){REMOTE_ERR=String((e&&e.message)||e);db=null;meRef=null;REMOTE=null}
   }
   if(!db){var o=null;try{o=JSON.parse(localStorage.getItem(KEY+(uid||""))||localStorage.getItem(KEY))}catch(e){}D=mk(o)}else mergeLocal();
   if(db){db.collection("players").onSnapshot(function(sn){
@@ -474,8 +480,9 @@ function drawLocalFriends(){
   L.sort(function(a,b){return b.s-a.s||b.o-a.o});
   var tot=0;L.forEach(function(p){tot+=p.t});
   var h='';
+  if(!cfgOk())h+='<div class="card"><b>Сервер пока не подключён.</b><p class="sub" style="margin:6px 0 0">В файле config.js не заполнены адрес и ключ. Если ты их уже вписала и загрузила на сайт, закрой страницу полностью и открой заново: возможно, телефон показывает старую версию. Кнопка «Я администратор» появится здесь, когда сервер подключится.</p></div>';
   if(cfgOk()){
-    h+=lsGet("forest-room")?'<div class="card"><b>Нет связи с сервером.</b><p class="sub" style="margin:6px 0 0">Проверь интернет и открой игру заново. Пока работает таблица на кодах.</p><button class="back" id="rchg2" type="button">Сменить код друзей</button></div>':'<div class="card"><b>Общая таблица с друзьями</b><p class="sub" style="margin:6px 0 0">Введи код друзей. Его придумывает и сообщает тот, кто настраивал игру. Результаты друзей будут обновляться сами.</p><input type="text" id="roomin" maxlength="24" placeholder="Например: FOREST-7" autocomplete="off"><button class="big" id="roomgo" type="button">Подключиться</button><div class="msg" id="roomm" aria-live="polite"></div></div>';
+    h+=lsGet("forest-room")?'<div class="card"><b>Нет связи с сервером.</b><p class="sub" style="margin:6px 0 0">Причина: '+esc(errHint(REMOTE_ERR||"неизвестна"))+' Пока работает таблица на кодах.</p><button class="back" id="rchg2" type="button">Сменить код друзей</button></div>':'<div class="card"><b>Общая таблица с друзьями</b><p class="sub" style="margin:6px 0 0">Введи код друзей. Его придумывает и сообщает тот, кто настраивал игру. Результаты друзей будут обновляться сами.</p><input type="text" id="roomin" maxlength="24" placeholder="Например: FOREST-7" autocomplete="off"><button class="big" id="roomgo" type="button">Подключиться</button><div class="msg" id="roomm" aria-live="polite"></div></div>';
   }
   h+='<div class="card"><b>Друзья без сервера</b><p class="sub" style="margin:6px 0 0">Покажи другу свой код или вставь его код сюда. Обновляй код, когда наберёшь новые звёзды.</p>'+
    '<button class="big" id="fcode" type="button">Показать мой код</button><div class="hide" id="fmine"><textarea id="fmy" readonly></textarea><button class="big alt" id="fcopy" type="button">Скопировать код</button></div>'+

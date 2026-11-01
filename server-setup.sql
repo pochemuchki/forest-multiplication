@@ -19,7 +19,7 @@ alter table public.app_secret enable row level security;
 revoke all on public.players from anon, authenticated;
 revoke all on public.app_secret from anon, authenticated;
 
-insert into public.app_secret (k, v) values ('admin_key', 'pochemuchka24')
+insert into public.app_secret (k, v) values ('admin_key', 'ВАШ_СЕКРЕТНЫЙ_КОД_АДМИНА')
   on conflict (k) do update set v = excluded.v;
 
 -- игрок сохраняет свои результаты
